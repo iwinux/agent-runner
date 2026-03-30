@@ -1,7 +1,8 @@
 ---
 name: CI Actions
 
-on: []
+on:
+  workflow_dispatch:
 
 jobs:
   build-image:
@@ -25,6 +26,10 @@ jobs:
       - name: check out codebase
         uses: actions/checkout@v4
 
+      - name: generate timestamp tag
+        id: tag
+        run: echo "value=$(date -u +'%Y%m%d%H%M%S')" >> "$GITHUB_OUTPUT"
+
       - name: build Docker image
         uses: docker/build-push-action@v6
         with:
@@ -32,4 +37,6 @@ jobs:
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:base-cache,mode=max
           file: Dockerfile
           push: true
-          tags: ${{ env.IMAGE_NAME }}:latest # FIXME: use YYYYMMDDHHmmss as tag suffix
+          tags: |
+            ${{ env.IMAGE_NAME }}:latest
+            ${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.value }}
