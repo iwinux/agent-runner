@@ -30,6 +30,7 @@ RUN mkdir -p $HOME/.local/share \
         @mariozechner/pi-coding-agent \
         @mariozechner/pi-tui \
         @sherif-fanous/pi-rtk \
+        @sinclair/typebox \
         pi-powerline-footer \
         pi-provider-kiro \
     && npm cache clean --force
