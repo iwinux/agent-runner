@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 
-set -euo pipefail
+set -xeuo pipefail
 
-ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd -P)
+ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
 MANIFEST_FILE="${ROOT_DIR}/packaging/pi-packages.sources.tsv"
 LOCK_FILE="${ROOT_DIR}/packaging/pi-packages.lock.tsv"
-OUTPUT_DIR="${1:-${ROOT_DIR}/pi-bundle}"
+OUTPUT_DIR="${ROOT_DIR}/pi-bundle"
 
 declare -A REPO_COMMITS=()
 

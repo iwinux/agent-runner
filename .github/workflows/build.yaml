@@ -27,37 +27,46 @@ jobs:
       - name: check out codebase
         uses: actions/checkout@v4
 
-      - name: hash Pi package lockfiles
+      - name: hash Pi bundle lockfiles
         id: pi_bundle_hash
         run: |
           echo -n 'value=' >> "$GITHUB_OUTPUT"
           cat packaging/pi-packages.sources.tsv packaging/pi-packages.lock.tsv | sha256sum | cut -d' ' -f1 >> "$GITHUB_OUTPUT"
 
-      - name: restore Pi package artifact
-        id: pi_bundle_restored
+      - name: look up Pi bundle artifact
+        id: pi_bundle_lookup
         env:
           ARTIFACT_NAME: pi-bundle-${{ steps.pi_bundle_hash.outputs.value }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           set -euo pipefail
 
           ARTIFACT_URI="repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${ARTIFACT_NAME}"
-          ARTIFACT_ID="$(gh api "${ARTIFACT_URI}" --jq '.artifacts[] | select(.expired == false) | .id' | head -n1 || true)"}
+          RUN_ID="$(gh api "${ARTIFACT_URI}" --jq '.artifacts[] | select(.expired == false) | .workflow_run.id' | head -n1 || true)"
 
-          if [ -z "${ARTIFACT_ID}" ]; then
+          if [ -z "${RUN_ID}" ]; then
             echo "hit=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/pi-bundle.zip
-          unzip -d . /tmp/pi-bundle.zip
+          echo "run_id=${RUN_ID}" >> "$GITHUB_OUTPUT"
           echo "hit=true" >> "$GITHUB_OUTPUT"
 
-      - name: fetch pinned Pi package bundle
-        if: steps.pi_bundle_restored.outputs.hit != 'true'
-        run: ./scripts/fetch-pi-packages.sh
+      - name: restore Pi bundle artifact
+        if: steps.pi_bundle_lookup.outputs.hit == 'true'
+        uses: actions/download-artifact@v8
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          name: pi-bundle-${{ steps.pi_bundle_hash.outputs.value }}
+          path: pi-bundle
+          run-id: ${{ steps.pi_bundle_lookup.outputs.run_id }}
 
-      - name: upload Pi package artifact
-        if: steps.pi_bundle_restored.outputs.hit != 'true'
+      - name: fetch Pi packages
+        if: steps.pi_bundle_lookup.outputs.hit != 'true'
+        run: scripts/fetch-pi-packages.sh
+
+      - name: upload Pi bundle artifact
+        if: steps.pi_bundle_lookup.outputs.hit != 'true'
         uses: actions/upload-artifact@v4
         with:
           name: pi-bundle-${{ steps.pi_bundle_hash.outputs.value }}
@@ -74,6 +83,7 @@ jobs:
         with:
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:base-cache
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:base-cache,mode=max
+          context: .
           file: Dockerfile
           push: true
           tags: |
