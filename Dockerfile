@@ -10,6 +10,7 @@ RUN apt-get update \
 
 FROM node:24-slim
 COPY --from=builder /root/.local/bin/rtk /usr/local/bin/
+COPY --exclude=*.tsv pi-bundle/ /usr/local/share/pi/
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -23,7 +24,7 @@ RUN usermod -d $HOME -l $APP_USER -m node && groupmod -n $APP_USER node
 USER $APP_USER
 WORKDIR $HOME
 
-RUN mkdir -p $HOME/.local/share \
+RUN mkdir -p $HOME/.config $HOME/.local/share \
     && npm config set prefix $HOME/.local \
     && npm install -g \
         @mariozechner/pi-ai \

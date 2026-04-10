@@ -8,6 +8,7 @@ jobs:
   build-image:
     runs-on: ubuntu-latest
     permissions:
+      actions: read
       contents: read
       packages: write
     env:
@@ -25,6 +26,44 @@ jobs:
 
       - name: check out codebase
         uses: actions/checkout@v4
+
+      - name: hash Pi package lockfiles
+        id: pi_bundle_hash
+        run: |
+          echo -n 'value=' >> "$GITHUB_OUTPUT"
+          cat packaging/pi-packages.sources.tsv packaging/pi-packages.lock.tsv | sha256sum | cut -d' ' -f1 >> "$GITHUB_OUTPUT"
+
+      - name: restore Pi package artifact
+        id: pi_bundle_restored
+        env:
+          ARTIFACT_NAME: pi-bundle-${{ steps.pi_bundle_hash.outputs.value }}
+        run: |
+          set -euo pipefail
+
+          ARTIFACT_URI="repos/${GITHUB_REPOSITORY}/actions/artifacts?name=${ARTIFACT_NAME}"
+          ARTIFACT_ID="$(gh api "${ARTIFACT_URI}" --jq '.artifacts[] | select(.expired == false) | .id' | head -n1 || true)"}
+
+          if [ -z "${ARTIFACT_ID}" ]; then
+            echo "hit=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          gh api "repos/${GITHUB_REPOSITORY}/actions/artifacts/${ARTIFACT_ID}/zip" > /tmp/pi-bundle.zip
+          unzip -d . /tmp/pi-bundle.zip
+          echo "hit=true" >> "$GITHUB_OUTPUT"
+
+      - name: fetch pinned Pi package bundle
+        if: steps.pi_bundle_restored.outputs.hit != 'true'
+        run: ./scripts/fetch-pi-packages.sh
+
+      - name: upload Pi package artifact
+        if: steps.pi_bundle_restored.outputs.hit != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: pi-bundle-${{ steps.pi_bundle_hash.outputs.value }}
+          path: pi-bundle
+          if-no-files-found: error
+          retention-days: 30
 
       - name: generate timestamp tag
         id: tag
