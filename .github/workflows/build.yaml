@@ -4,15 +4,36 @@ name: CI Actions
 on:
   workflow_dispatch:
 
+env:
+  IMAGE_NAME: ghcr.io/iwinux/agent-runner
+
 jobs:
-  build-image:
+  prepare:
     runs-on: ubuntu-latest
+    outputs:
+      timestamp: ${{ steps.tag.outputs.value }}
+    steps:
+      - name: generate timestamp tag
+        id: tag
+        run: echo "value=$(date -u +'%Y%m%d%H%M%S')" >> "$GITHUB_OUTPUT"
+
+  build-image:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            platform: linux/amd64
+            tag-suffix: amd64
+          - runner: ubuntu-24.04-arm
+            platform: linux/arm64
+            tag-suffix: arm64
+    runs-on: ${{ matrix.runner }}
     permissions:
       actions: read
       contents: read
       packages: write
-    env:
-      IMAGE_NAME: ghcr.io/iwinux/agent-runner
     steps:
       - name: set up Docker image builder
         uses: docker/setup-buildx-action@v3
@@ -74,18 +95,43 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: generate timestamp tag
-        id: tag
-        run: echo "value=$(date -u +'%Y%m%d%H%M%S')" >> "$GITHUB_OUTPUT"
-
       - name: build Docker image
         uses: docker/build-push-action@v6
         with:
-          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:base-cache
-          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:base-cache,mode=max
+          cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:cache-${{ matrix.tag-suffix }}
+          cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:cache-${{ matrix.tag-suffix }},mode=max
           context: .
           file: Dockerfile
+          platforms: ${{ matrix.platform }}
           push: true
           tags: |
-            ${{ env.IMAGE_NAME }}:latest
-            ${{ env.IMAGE_NAME }}:${{ steps.tag.outputs.value }}
+            ${{ env.IMAGE_NAME }}:latest-${{ matrix.tag-suffix }}
+            ${{ env.IMAGE_NAME }}:${{ needs.prepare.outputs.timestamp }}-${{ matrix.tag-suffix }}
+
+  merge-manifests:
+    needs: [prepare, build-image]
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: create and push multi-arch manifests
+        env:
+          TAG: ${{ needs.prepare.outputs.timestamp }}
+        run: |
+          docker manifest create ${{ env.IMAGE_NAME }}:latest \
+            ${{ env.IMAGE_NAME }}:latest-amd64 \
+            ${{ env.IMAGE_NAME }}:latest-arm64
+
+          docker manifest create ${{ env.IMAGE_NAME }}:${TAG} \
+            ${{ env.IMAGE_NAME }}:${TAG}-amd64 \
+            ${{ env.IMAGE_NAME }}:${TAG}-arm64
+
+          docker manifest push ${{ env.IMAGE_NAME }}:latest
+          docker manifest push ${{ env.IMAGE_NAME }}:${TAG}
