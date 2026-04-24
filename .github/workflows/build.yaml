@@ -26,9 +26,14 @@ jobs:
           - runner: ubuntu-24.04
             platform: linux/amd64
             tag-suffix: amd64
+            app-uid: 1000
+            app-gid: 1000
+
           - runner: ubuntu-24.04-arm
             platform: linux/arm64
             tag-suffix: arm64
+            app-uid: 501
+            app-gid: 20
     runs-on: ${{ matrix.runner }}
     permissions:
       actions: read
@@ -98,6 +103,9 @@ jobs:
       - name: build Docker image
         uses: docker/build-push-action@v6
         with:
+          build-args: |
+            APP_UID=${{ matrix.app-uid }}
+            APP_GID=${{ matrix.app-gid }}
           cache-from: type=registry,ref=${{ env.IMAGE_NAME }}:cache-${{ matrix.tag-suffix }}
           cache-to: type=registry,ref=${{ env.IMAGE_NAME }}:cache-${{ matrix.tag-suffix }},mode=max
           context: .

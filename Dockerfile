@@ -17,10 +17,17 @@ RUN apt-get update \
         ca-certificates \
         catatonit
 
+ARG APP_UID=1000
+ARG APP_GID=1000
+
 ENV APP_USER=piper
 ENV HOME=/agent
 ENV PATH=$HOME/.local/bin:$PATH
-RUN usermod -d $HOME -l $APP_USER -m node && groupmod -n $APP_USER node
+
+RUN groupmod -g "$APP_GID" -n "$APP_USER" node \
+    && usermod -u "$APP_UID" -g "$APP_GID" -d "$HOME" -l "$APP_USER" -m node \
+    && chown -R "$APP_UID:$APP_GID" "$HOME"
+
 USER $APP_USER
 WORKDIR $HOME
 
