@@ -34,13 +34,13 @@ WORKDIR $HOME
 RUN mkdir -p $HOME/.config $HOME/.local/share \
     && npm config set prefix $HOME/.local \
     && npm install -g \
-        @mariozechner/pi-ai \
-        @mariozechner/pi-coding-agent \
-        @mariozechner/pi-tui \
+        @mariozechner/pi-ai@0.70.0 \
+        @mariozechner/pi-coding-agent@0.70.0 \
+        @mariozechner/pi-tui@0.70.0 \
         @sherif-fanous/pi-rtk \
-        @sinclair/typebox \
         pi-powerline-footer \
         pi-provider-kiro \
+        typebox@1.1.24 \
     && npm cache clean --force
 
 ENTRYPOINT ["catatonit", "-P"]
