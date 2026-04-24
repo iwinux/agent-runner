@@ -2,6 +2,7 @@
 mitsuhiko/agent-stuff	extensions/context.ts	extensions	context.ts
 mitsuhiko/agent-stuff	extensions/loop.ts	extensions	loop.ts
 mitsuhiko/agent-stuff	extensions/review.ts	extensions	review.ts
+mitsuhiko/agent-stuff	extensions/session-breakdown.ts	extensions	session-breakdown.ts
 mitsuhiko/agent-stuff	extensions/todos.ts	extensions	todos.ts
 cagdotin/agents	pi-themes/tokyo-night.json	themes	tokyo-night.json
 marv1nnnnn/pi-workstation	pi-package/themes/kanagawa.json	themes	kanagawa.json
