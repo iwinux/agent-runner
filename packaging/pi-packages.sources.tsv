@@ -1,8 +1,8 @@
 # repo	path	dest_dir	filename
-mitsuhiko/agent-stuff	pi-extensions/context.ts	extensions	context.ts
-mitsuhiko/agent-stuff	pi-extensions/loop.ts	extensions	loop.ts
-mitsuhiko/agent-stuff	pi-extensions/review.ts	extensions	review.ts
-mitsuhiko/agent-stuff	pi-extensions/todos.ts	extensions	todos.ts
+mitsuhiko/agent-stuff	extensions/context.ts	extensions	context.ts
+mitsuhiko/agent-stuff	extensions/loop.ts	extensions	loop.ts
+mitsuhiko/agent-stuff	extensions/review.ts	extensions	review.ts
+mitsuhiko/agent-stuff	extensions/todos.ts	extensions	todos.ts
 cagdotin/agents	pi-themes/tokyo-night.json	themes	tokyo-night.json
 marv1nnnnn/pi-workstation	pi-package/themes/kanagawa.json	themes	kanagawa.json
 marv1nnnnn/pi-workstation	pi-package/themes/terayama.json	themes	terayama.json
