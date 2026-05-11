@@ -5,7 +5,8 @@ set -euo pipefail
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
 MANIFEST_FILE="${ROOT_DIR}/pi/sources.tsv"
 LOCK_FILE="${ROOT_DIR}/pi/repos.tsv"
-OUTPUT_DIR="${ROOT_DIR}/pi/external"
+BUNDLED_DIR="${ROOT_DIR}/pi/bundled"
+OUTPUT_DIR="${ROOT_DIR}/pi/fetched"
 
 declare -A REPO_COMMITS=()
 
@@ -32,6 +33,10 @@ WORK_DIR="$(mktemp -d)"
 trap cleanup EXIT INT QUIT TERM
 mkdir -p "${WORK_DIR}/extensions" "${WORK_DIR}/themes"
 
+if [[ -d "${BUNDLED_DIR}" ]]; then
+    cp -R "${BUNDLED_DIR}/." "${WORK_DIR}/"
+fi
+
 while IFS=$'\t' read -r repo path dest_dir filename; do
     if [[ -z "${repo}" || "${repo}" == \#* ]]; then
         continue
@@ -56,4 +61,4 @@ rm -rf "${OUTPUT_DIR}"
 mv "${WORK_DIR}" "${OUTPUT_DIR}"
 trap - EXIT
 
-echo "external Pi packages fetched: ${OUTPUT_DIR}"
+echo "Pi packages fetched: ${OUTPUT_DIR}"

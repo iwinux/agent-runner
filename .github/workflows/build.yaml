@@ -57,7 +57,10 @@ jobs:
         id: pi_bundle_hash
         run: |
           echo -n 'value=' >> "$GITHUB_OUTPUT"
-          cat pi/sources.tsv pi/repos.tsv | sha256sum | cut -d' ' -f1 >> "$GITHUB_OUTPUT"
+          {
+            cat pi/sources.tsv pi/repos.tsv
+            find pi/bundled -type f -print0 | sort -z | xargs -0 sha256sum
+          } | sha256sum | cut -d' ' -f1 >> "$GITHUB_OUTPUT"
 
       - name: look up Pi bundle artifact
         id: pi_bundle_lookup
@@ -84,7 +87,7 @@ jobs:
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           name: pi-bundle-${{ steps.pi_bundle_hash.outputs.value }}
-          path: pi/external
+          path: pi/fetched
           run-id: ${{ steps.pi_bundle_lookup.outputs.run_id }}
 
       - name: fetch Pi packages
@@ -96,7 +99,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: pi-bundle-${{ steps.pi_bundle_hash.outputs.value }}
-          path: pi/external
+          path: pi/fetched
           if-no-files-found: error
           retention-days: 30
 
