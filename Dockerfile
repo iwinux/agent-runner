@@ -1,4 +1,4 @@
-FROM node:24-slim AS builder
+FROM debian:trixie-slim AS builder
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -8,9 +8,9 @@ RUN apt-get update \
     && curl -fsSL -o /tmp/rtk-install.sh https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh \
     && bash /tmp/rtk-install.sh
 
-FROM node:24-slim
+FROM debian:trixie-slim
 COPY --from=builder /root/.local/bin/rtk /usr/local/bin/
-COPY --exclude=*.tsv pi-bundle/ /usr/local/share/pi/
+COPY --exclude=*.tsv pi/fetched/ /usr/local/share/pi/
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -24,23 +24,9 @@ ENV APP_USER=piper
 ENV HOME=/agent
 ENV PATH=$HOME/.local/bin:$PATH
 
-RUN groupmod -g "$APP_GID" -n "$APP_USER" --non-unique node \
-    && usermod -u "$APP_UID" -g "$APP_GID" -d "$HOME" -l "$APP_USER" -m node \
-    && chown -R "$APP_UID:$APP_GID" "$HOME"
+RUN groupadd --gid="$APP_GID" --non-unique "$APP_USER" \
+    && useradd --uid="$APP_UID" --gid="$APP_GID" --home-dir="$HOME" --create-home "$APP_USER"
 
 USER $APP_USER
 WORKDIR $HOME
-
-RUN mkdir -p $HOME/.config $HOME/.local/share \
-    && npm config set prefix $HOME/.local \
-    && npm install -g \
-        @mariozechner/pi-ai@0.70.0 \
-        @mariozechner/pi-coding-agent@0.70.0 \
-        @mariozechner/pi-tui@0.70.0 \
-        @sherif-fanous/pi-rtk \
-        pi-powerline-footer \
-        pi-provider-kiro \
-        typebox@1.1.24 \
-    && npm cache clean --force
-
 ENTRYPOINT ["catatonit", "-P"]
