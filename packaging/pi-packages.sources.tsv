@@ -1,10 +1,10 @@
 # repo	path	dest_dir	filename
-mitsuhiko/agent-stuff	extensions/context.ts	extensions	context.ts
+earendil-works/pi	packages/coding-agent/examples/extensions/handoff.ts	extensions	handoff.ts
+marv1nnnnn/pi-workstation	pi-package/themes/kanagawa.json	themes	kanagawa.json
+marv1nnnnn/pi-workstation	pi-package/themes/terayama.json	themes	terayama.json
+marv1nnnnn/pi-workstation	pi-package/themes/the-silver-case.json	themes	the-silver-case.json
+mitsuhiko/agent-stuff	extensions/goal.ts	extensions	goal.ts
 mitsuhiko/agent-stuff	extensions/loop.ts	extensions	loop.ts
 mitsuhiko/agent-stuff	extensions/review.ts	extensions	review.ts
 mitsuhiko/agent-stuff	extensions/session-breakdown.ts	extensions	session-breakdown.ts
 mitsuhiko/agent-stuff	extensions/todos.ts	extensions	todos.ts
-cagdotin/agents	pi-themes/tokyo-night.json	themes	tokyo-night.json
-marv1nnnnn/pi-workstation	pi-package/themes/kanagawa.json	themes	kanagawa.json
-marv1nnnnn/pi-workstation	pi-package/themes/terayama.json	themes	terayama.json
-marv1nnnnn/pi-workstation	pi-package/themes/the-silver-case.json	themes	the-silver-case.json
