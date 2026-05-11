@@ -3,9 +3,9 @@
 set -euo pipefail
 
 ROOT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)
-MANIFEST_FILE="${ROOT_DIR}/packaging/pi-packages.sources.tsv"
-LOCK_FILE="${ROOT_DIR}/packaging/pi-packages.lock.tsv"
-OUTPUT_DIR="${ROOT_DIR}/pi-bundle"
+MANIFEST_FILE="${ROOT_DIR}/pi/sources.tsv"
+LOCK_FILE="${ROOT_DIR}/pi/repos.tsv"
+OUTPUT_DIR="${ROOT_DIR}/pi/external"
 
 declare -A REPO_COMMITS=()
 
@@ -56,4 +56,4 @@ rm -rf "${OUTPUT_DIR}"
 mv "${WORK_DIR}" "${OUTPUT_DIR}"
 trap - EXIT
 
-echo "pi-bundle packages fetched: ${OUTPUT_DIR}"
+echo "external Pi packages fetched: ${OUTPUT_DIR}"
