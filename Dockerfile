@@ -1,15 +1,4 @@
-FROM debian:trixie-slim AS builder
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends \
-        ca-certificates \
-        curl \
-    && rm -rf /var/lib/apt/lists/* \
-    && curl -fsSL -o /tmp/rtk-install.sh https://raw.githubusercontent.com/rtk-ai/rtk/refs/heads/master/install.sh \
-    && bash /tmp/rtk-install.sh
-
 FROM debian:trixie-slim
-COPY --from=builder /root/.local/bin/rtk /usr/local/bin/
 COPY --exclude=*.tsv pi/fetched/ /usr/local/share/pi/
 
 RUN apt-get update \
