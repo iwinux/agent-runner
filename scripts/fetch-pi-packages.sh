@@ -49,6 +49,8 @@ while IFS=$'\t' read -r repo path dest_dir filename; do
         exit 1
     fi
 
+    echo "URL: https://raw.githubusercontent.com/${repo}/${commit_sha}/${path}"
+
     curl -fsSL \
         -o "${WORK_DIR}/${dest_dir}/${filename}" \
         "https://raw.githubusercontent.com/${repo}/${commit_sha}/${path}"
