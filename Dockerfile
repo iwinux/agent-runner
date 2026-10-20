@@ -4,7 +4,9 @@ COPY --exclude=*.tsv pi/fetched/ /usr/local/share/pi/
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         ca-certificates \
-        catatonit
+        catatonit \
+    && apt clean \
+    && rm -rf /var/lib/apt/lists/*
 
 ARG APP_UID=1000
 ARG APP_GID=1000
