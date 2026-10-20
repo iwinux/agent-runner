@@ -1,6 +1,5 @@
 # repo	path	dest_dir	filename
 earendil-works/pi	packages/coding-agent/examples/extensions/handoff.ts	extensions	handoff.ts
-mitsuhiko/agent-stuff	extensions/goal.ts	extensions	goal.ts
 mitsuhiko/agent-stuff	extensions/review.ts	extensions	review.ts
 mitsuhiko/agent-stuff	extensions/session-breakdown.ts	extensions	session-breakdown.ts
 mitsuhiko/agent-stuff	extensions/todos.ts	extensions	todos.ts
