@@ -1,0 +1,10 @@
+{
+  "npmCommand": ["fake-npm"],
+  "packages": [
+    {
+      "source": "npm:amp-themes",
+      "skills": []
+    }
+  ],
+  "theme": "amp-dark"
+}

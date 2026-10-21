@@ -1,0 +1,36 @@
+{
+  "dependencies": {
+    "@earendil-works/pi-coding-agent": "1.3.0",
+    "@earendil-works/pi-tui": "1.3.0",
+    "amp-themes": "0.4.1"
+  },
+  "overrides": {
+    "@aws-sdk/core": "3.977.9",
+    "@aws-sdk/credential-provider-env": "3.972.70",
+    "@aws-sdk/credential-provider-http": "3.972.72",
+    "@aws-sdk/credential-provider-ini": "3.973.15",
+    "@aws-sdk/credential-provider-login": "3.972.77",
+    "@aws-sdk/credential-provider-node": "3.972.82",
+    "@aws-sdk/credential-provider-process": "3.972.70",
+    "@aws-sdk/credential-provider-sso": "3.973.14",
+    "@aws-sdk/credential-provider-web-identity": "3.972.76",
+    "@aws-sdk/eventstream-handler-node": "3.972.34",
+    "@aws-sdk/middleware-eventstream": "3.972.29",
+    "@aws-sdk/middleware-websocket": "3.972.52",
+    "@aws-sdk/nested-clients": "3.997.44",
+    "@aws-sdk/signature-v4-multi-region": "3.996.46",
+    "@aws-sdk/types": "3.974.5",
+    "@aws-sdk/xml-builder": "3.972.40",
+    "@babel/runtime": "7.29.2",
+    "@protobufjs/utf8": "1.1.1",
+    "@smithy/core": "3.33.3",
+    "@smithy/signature-v4": "5.7.3",
+    "@smithy/types": "4.18.0",
+    "@types/node": "22.19.19",
+    "gaxios": "7.1.4",
+    "google-auth-library": "10.6.2",
+    "lru-cache": "11.4.0",
+    "undici-types": "6.21.0",
+    "ws": "8.21.0"
+  }
+}

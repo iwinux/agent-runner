@@ -1,0 +1,23 @@
+#!/bin/sh
+# Pi's package manager shells out to `npm`, which is not installed (Bun only).
+# Resolve global packages against the pinned bundle and no-op installs, so that
+# `npm:`-sourced packages (e.g. amp-themes) come from the bundle and nothing is
+# downloaded at runtime.
+: "${PI_HOME:=${HOME}/.local/share/bun/tools/pi}"
+
+case "$1" in
+install)
+    echo "INSTALL NOOP: ${*}" >&2
+    ;;
+root)
+    if [ "$2" = "-g" ]; then
+        echo "${PI_HOME}/node_modules"
+    else
+        echo node_modules
+    fi
+    ;;
+*)
+    echo "fake-npm: unsupported command: ${*}" >&2
+    exit 1
+    ;;
+esac
