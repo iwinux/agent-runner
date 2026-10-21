@@ -26,14 +26,16 @@
 
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
 import { getAgentDir } from "@earendil-works/pi-coding-agent";
-import type { Model } from "@earendil-works/pi-ai";
+import type { Model } from "@earendil-works/pi-ai/compat";
+// The per-API factories are only on the compat entry that pi's extension
+// loader maps; their own modules (pi-ai/api/*.lazy) aren't reachable from an extension.
 import {
 	anthropicMessagesApi,
 	createProvider,
 	googleGenerativeAIApi,
 	openAICompletionsApi,
 	openAIResponsesApi,
-} from "@earendil-works/pi-ai";
+} from "@earendil-works/pi-ai/compat";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -133,17 +135,22 @@ function endpointFromSettings(): string | undefined {
 	}
 }
 
+/** A trimmed value, or undefined when it is missing or blank (an empty env var is unset). */
+function nonBlank(value: string | undefined): string | undefined {
+	return typeof value === "string" && value.trim() ? value.trim() : undefined;
+}
+
 function resolveEndpoint(credentialEnv?: Record<string, string | undefined>): string {
 	return (
-		credentialEnv?.[ENDPOINT_ENV_KEY] ??
-		process.env[ENDPOINT_ENV_KEY] ??
+		nonBlank(credentialEnv?.[ENDPOINT_ENV_KEY]) ??
+		nonBlank(process.env[ENDPOINT_ENV_KEY]) ??
 		endpointFromSettings() ??
 		DEFAULT_ENDPOINT
 	);
 }
 
 function resolveKey(credentialKey?: string): string | undefined {
-	return credentialKey ?? process.env[API_KEY_ENV_KEY] ?? undefined;
+	return nonBlank(credentialKey) ?? nonBlank(process.env[API_KEY_ENV_KEY]);
 }
 
 /** Root of a gateway address: bare host:port becomes http://, a trailing /v1 is dropped. */
@@ -180,7 +187,7 @@ function familyApi(model: MagpieModel): PiApi {
 /**
  * Whether pi's Google API asks this model for a discrete thinkingLevel. Its
  * rule, copied from usesGoogleThinkingLevel: Gemini 3 Pro/Flash (id with or
- * without a minor version) and Gemma 4. Every other Gemini id gets a -1
+ * without a minor version), Gemini 4 and later, and Gemma 4. Every other Gemini id gets a -1
  * thinkingBudget, "the model decides", for *every* thinking level, which
  * magpie reads back as medium: asking those on the Gemini API would turn
  * "high" into "medium". Chat Completions carries the level, so they go
@@ -189,6 +196,7 @@ function familyApi(model: MagpieModel): PiApi {
 function asksDiscreteGoogleThinking(bare: string): boolean {
 	return (
 		/gemini-3(?:\.\d+)?-(?:pro|flash)/.test(bare) ||
+		/gemini-(?:[4-9]|[1-9]\d)/.test(bare) ||
 		bare === "gemini-flash-latest" ||
 		bare === "gemini-flash-lite-latest" ||
 		/gemma-?4/.test(bare)
@@ -240,7 +248,7 @@ function supportedEfforts(model: MagpieModel): (typeof EFFORTS)[number][] {
  * (Chat Completions would otherwise send nothing at all and leave the
  * model's default thinking on).
  */
-function thinkingLevelMap(model: MagpieModel, api: PiApi): Model["thinkingLevelMap"] {
+function thinkingLevelMap(model: MagpieModel, api: PiApi): Model<PiApi>["thinkingLevelMap"] {
 	if (!model.reasoning) return undefined;
 	if (api === "google-generative-ai") return undefined;
 	const map: Record<string, string> = { off: "none" };
@@ -253,7 +261,7 @@ function thinkingLevelMap(model: MagpieModel, api: PiApi): Model["thinkingLevelM
 	return map;
 }
 
-const ZERO_COST: Model["cost"] = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+const ZERO_COST: Model<PiApi>["cost"] = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
 
 /**
  * pi's cost from magpie's price (USD per million tokens). magpie only tells
@@ -261,7 +269,7 @@ const ZERO_COST: Model["cost"] = { input: 0, output: 0, cacheRead: 0, cacheWrite
  * request asks with X-Magpie-Prices; a model with no price stays at 0, as
  * pi knows nothing of what it costs.
  */
-function toPiCost(price: MagpiePrice | undefined): Model["cost"] {
+function toPiCost(price: MagpiePrice | undefined): Model<PiApi>["cost"] {
 	if (!price) return ZERO_COST;
 	const usd = (value: unknown): number =>
 		typeof value === "number" && Number.isFinite(value) && value >= 0 ? value : 0;
@@ -299,6 +307,7 @@ function toPiModel(model: MagpieModel, root: string): Model<PiApi> | undefined {
 	api ??= familyApi(model);
 
 	const input = (model.modalities?.input ?? []).filter((m) => m === "text" || m === "image");
+	const contextWindow = model.context_window ?? model.context_length ?? 128000;
 
 	return {
 		id: model.id,
@@ -310,8 +319,9 @@ function toPiModel(model: MagpieModel, root: string): Model<PiApi> | undefined {
 		thinkingLevelMap: thinkingLevelMap(model, api),
 		input: input.length > 0 ? input : ["text"],
 		cost: toPiCost(model.magpie_price),
-		contextWindow: model.context_window ?? model.context_length ?? 128000,
-		maxTokens: model.max_output_tokens ?? 65536,
+		contextWindow,
+		// The default must not exceed a small model's window, or backends refuse it.
+		maxTokens: model.max_output_tokens ?? Math.min(65536, contextWindow),
 	};
 }
 
@@ -328,20 +338,29 @@ async function fetchModelsFrom(
 		// with a gateway key, and only when asked.
 		[PRICES_HEADER]: "1",
 	};
-	let response = await fetch(`${root}/models`, { headers, signal });
+	let url = `${root}/models`;
+	let response = await fetch(url, { headers, signal });
 	if (response.status === 404) {
 		// Older magpies and some proxies serve the list under /v1 only.
-		response = await fetch(`${root}/v1/models`, { headers, signal });
+		url = `${root}/v1/models`;
+		response = await fetch(url, { headers, signal });
 	}
 	if (!response.ok) {
-		throw new Error(`HTTP ${response.status} from ${endpoint}/models${key ? "" : " (no API key sent)"}`);
+		throw new Error(`HTTP ${response.status} from ${url}${key ? "" : " (no API key sent)"}`);
 	}
-	const payload = (await response.json()) as { data?: MagpieModel[] };
-	const models = (payload.data ?? [])
+	let payload: { data?: unknown };
+	try {
+		payload = (await response.json()) as { data?: unknown };
+	} catch (error) {
+		if (signal.aborted) throw error;
+		throw new Error(`${url} did not return JSON (is ${endpoint} a magpie gateway?)`);
+	}
+	const list = Array.isArray(payload?.data) ? (payload.data as MagpieModel[]) : [];
+	const models = list
 		.map((model) => toPiModel(model, root))
 		.filter((model): model is Model<PiApi> => model !== undefined);
 	if (models.length === 0) {
-		throw new Error(`${endpoint}/models has no chat models`);
+		throw new Error(`${url} has no chat models`);
 	}
 	return models;
 }
@@ -381,7 +400,8 @@ export default async function (pi: ExtensionAPI) {
 	// the gateway answers, else pi's stored catalog. Registering an empty
 	// provider races pi's own model restore and can leave the default model
 	// "unknown" on the occasional startup.
-	let models = storedModels(root);
+	let models: Model<PiApi>[] | undefined;
+	lastEndpoint = endpoint;
 	if (!offline()) {
 		try {
 			models = await fetchModelsFrom(root, endpoint, key, AbortSignal.timeout(STARTUP_FETCH_TIMEOUT_MS));
@@ -391,7 +411,7 @@ export default async function (pi: ExtensionAPI) {
 			lastError = error instanceof Error ? error.message : String(error);
 		}
 	}
-	lastEndpoint = endpoint;
+	models ??= storedModels(root);
 
 	pi.registerProvider(
 		createProvider<PiApi>({
@@ -417,17 +437,19 @@ export default async function (pi: ExtensionAPI) {
 						).trim();
 						return {
 							type: "api_key",
-							key,
+							// An empty key is not stored, so it can't mask MAGPIE_API_KEY.
+							key: key || undefined,
 							env: endpoint ? { [ENDPOINT_ENV_KEY]: endpoint } : undefined,
 						};
 					},
 					async resolve({ ctx, credential }) {
-						const key = resolveKey(credential?.key) ?? (await ctx.env(API_KEY_ENV_KEY)) ?? undefined;
+						const stored = nonBlank(credential?.key);
+						const key = stored ?? resolveKey() ?? nonBlank(await ctx.env(API_KEY_ENV_KEY));
 						if (!key) return undefined;
 						return {
 							auth: { apiKey: key },
 							env: credential?.env,
-							source: credential?.key ? "stored API key" : API_KEY_ENV_KEY,
+							source: stored ? "stored API key" : API_KEY_ENV_KEY,
 						};
 					},
 				},
@@ -447,10 +469,12 @@ export default async function (pi: ExtensionAPI) {
 					const endpoint = resolveEndpoint(credential?.env);
 					const root = gatewayRoot(endpoint);
 					const key = resolveKey(credential?.key);
+					// Recorded before the fetch, so a failure is reported against the
+					// endpoint that failed rather than the last one that worked.
+					lastEndpoint = endpoint;
 					const models = await fetchModelsFrom(root, endpoint, key, context.signal);
 					lastError = undefined;
 					lastSuccessAt = Date.now();
-					lastEndpoint = endpoint;
 					return models;
 				} catch (error) {
 					// The model picker only shows "Could not refresh magpie" and
@@ -469,26 +493,30 @@ export default async function (pi: ExtensionAPI) {
 		description: "Magpie provider status: endpoint, models, refresh errors",
 		async handler(_args, ctx) {
 			const auth = await ctx.modelRegistry.getProviderAuth("magpie");
-			const endpoint = lastEndpoint ?? auth?.env?.[ENDPOINT_ENV_KEY] ?? resolveEndpoint();
-			const lines = [`endpoint ${endpoint}`];
+			const lines: string[] = [];
+			let level: "info" | "error" = "info";
 
 			if (!auth) {
 				lines.push("not signed in — run /login magpie");
 				if (lastError) lines.push(`last refresh failed: ${lastError}`);
 			} else {
 				const result = await ctx.modelRegistry.refresh({ providers: ["magpie"] });
-				const error = result?.errors.get("magpie");
+				const error = result?.errors?.get("magpie");
 				const count = ctx.modelRegistry.getAll().filter((m) => m.provider === "magpie").length;
 				lines.push(`${count} models`);
 				if (lastSuccessAt) lines.push(`last ok ${new Date(lastSuccessAt).toLocaleString()}`);
 				if (error) {
 					lines.push(`refresh failed: ${error instanceof Error ? error.message : String(error)}`);
-					ctx.ui.notify(`magpie — ${lines.join(" · ")}`, "error");
-					return;
+					level = "error";
+				} else if (result?.aborted) {
+					lines.push("refresh aborted");
 				}
-				if (result?.aborted) lines.push("refresh aborted");
 			}
-			ctx.ui.notify(`magpie — ${lines.join(" · ")}`, "info");
+
+			// Read after the refresh, which may have switched it (e.g. right
+			// after /login magpie with a new endpoint).
+			const endpoint = lastEndpoint ?? resolveEndpoint(auth?.env);
+			ctx.ui.notify(`magpie — ${[`endpoint ${endpoint}`, ...lines].join(" · ")}`, level);
 		},
 	});
 }
