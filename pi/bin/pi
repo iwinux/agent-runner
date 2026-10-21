@@ -1,28 +1,32 @@
-#!/bin/sh
-# Run Pi from the pinned Bun bundle: `bun run --bun` overrides the CLI's
-# `#!/usr/bin/env node` shebang, so no Node.js runtime is needed.
-set -e
+#!/usr/bin/env bash
+# shellcheck disable=SC2155
 
-: "${PI_HOME:=${HOME}/.local/share/bun/tools/pi}"
-export PI_HOME
+set -euo pipefail
 
 export JITI_TRY_NATIVE=false
 export AMP_APPEARANCE=dark
 
-# Per-project todo directory: `<git-root|pwd>-<sha8>`
-project_dir=$PWD
-dir=$PWD
-while [ "$dir" != "/" ] && [ ! -d "$dir/.git" ]; do
-    dir=$(dirname "$dir")
-done
-if [ -d "$dir/.git" ]; then
-    project_dir=$dir
-fi
-if command -v sha256sum >/dev/null 2>&1; then
-    slug="$(basename "$project_dir")-$(printf %s "$project_dir" | sha256sum | cut -c1-8)"
-else
-    slug="$(basename "$project_dir")"
-fi
-export PI_TODO_PATH="${HOME}/.pi/agent/todos/${slug}"
+# per-project slug: `<git-root|pwd>-<sha8>`
+pwd-slug() {
+    local project_dir=$PWD
+    local dir=$PWD
 
+    while [[ "$dir" != "/" ]] && [[ ! -d "$dir/.git" ]]
+    do
+        dir="$(dirname "$dir")"
+    done
+
+    if [[ -d "$dir/.git" ]]; then
+        project_dir="$dir"
+    fi
+
+    if command -v sha256sum >/dev/null 2>&1
+    then
+        echo "$(basename "$project_dir")-$(printf %s "$project_dir" | sha256sum | cut -c1-8)"
+    else
+        basename "$project_dir"
+    fi
+}
+
+export PI_TODO_PATH="${HOME}/.pi/agent/todos/$(pwd-slug)"
 exec bun run --bun "${PI_HOME}/node_modules/.bin/pi" "$@"

@@ -1,7 +1,5 @@
 FROM debian:trixie-slim
 
-COPY --from=docker.io/oven/bun:1.4.3-slim /usr/local/bin/bun /usr/local/bin/bun
-
 ARG APP_UID=1000
 ARG APP_GID=1000
 
@@ -23,18 +21,15 @@ RUN groupadd --gid="$APP_GID" --non-unique "$APP_USER" \
 USER $APP_USER
 WORKDIR $HOME
 
-# Pi runtime dependencies, resolved from the pinned Bun bundle (no Node.js involved)
-COPY --chown=$APP_UID:$APP_GID pi/bundle/package.json pi/bundle/bun.lock $PI_HOME/
+COPY --from=docker.io/oven/bun:1.4.3-slim /usr/local/bin/bun /usr/local/bin/bun
+COPY --chown=$APP_UID:$APP_GID pi/package/ $PI_HOME/
+COPY --chown=$APP_UID:$APP_GID pi/bin/ $HOME/.local/bin/
+
 RUN cd "$PI_HOME" \
     && bun install --frozen-lockfile --production \
     && rm -rf "$HOME/.bun/install/cache"
 
-# `pi` (Bun launcher, overrides the CLI's `#!/usr/bin/env node` shebang via `--bun`)
-# and `fake-npm` (npm shim for Pi's package manager)
-COPY --chmod=755 --chown=$APP_UID:$APP_GID pi/bin/ $HOME/.local/bin/
-
-# Curated extensions & themes, discovered from the global agent directory
 COPY --exclude=*.tsv --chown=$APP_UID:$APP_GID pi/fetched/ $HOME/.pi/agent/
-COPY --chown=$APP_UID:$APP_GID pi/agent/ $HOME/.pi/agent/
+COPY --chown=$APP_UID:$APP_GID pi/settings.json $HOME/.pi/agent/settings.json
 
-ENTRYPOINT ["catatonit", "-P"]
+ENTRYPOINT ["catatonit", "--"]
