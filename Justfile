@@ -11,4 +11,4 @@ build:
         -t agent-runner:latest .
 
 rpc:
-    @printf '{"id":"1","type":"get_state"}\n' | docker run -it --rm agent-runner:latest pi --mode rpc --no-session --offline
+    @printf '{"id":"1","type":"get_state"}\n' | docker run --rm agent-runner:latest pi --mode rpc --no-session --offline
